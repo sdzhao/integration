@@ -2,8 +2,6 @@
 
 library(sandwich);
 
-expit <- function(x) { 1/(1+exp(-x)); } # pi() for logistic
-
 ## **************************************************************
 ## integrative gwas
 ## **************************************************************
@@ -29,8 +27,8 @@ igwas <- function(Y,G,S,X=NULL,family)
     n <- sum(cc); p <- ncol(G); q <- ncol(S); r <- ncol(X);
 
     ## fit outcome model and transcript model
-    if(r==0){ fit.o <- glm(Y~G+S,family=family); } else
-    { fit.o <- glm(Y~G+S+X,family=family); }
+    if(r==0){ fit.o <- glm(Y~G,family=family); } else
+    { fit.o <- glm(Y~G+X,family=family); }
     ystar <- G%*%coef(fit.o)[2:(1+p)];
     if(r==0){ fit.t <- lm(ystar~S); } else
     { fit.t <- lm(ystar~S+X); }
@@ -40,14 +38,14 @@ igwas <- function(Y,G,S,X=NULL,family)
     covs <- cbind(1,S,X);
     B <- t(covs)%*%G/n;
     B <- cbind(rep(0,nrow(B)),B,
-               matrix(0,nrow=nrow(B),ncol=q+r));
+               matrix(0,nrow=nrow(B),ncol=r));
     Cinv <- solve(t(covs)%*%covs/n);
     ee <- cbind(estfun(fit.o),estfun(fit.t));
     V <- t(ee)%*%ee/n;
-    V11 <- V[1:(1+p+q+r),1:(1+p+q+r)];
-    V12 <- V[1:(1+p+q+r),(2+p+q+r):ncol(V)];
-    V21 <- V[(2+p+q+r):ncol(V),1:(1+p+q+r)];
-    V22 <- V[(2+p+q+r):ncol(V),(2+p+q+r):ncol(V)];
+    V11 <- V[1:(1+p+r),1:(1+p+r)];
+    V12 <- V[1:(1+p+r),(2+p+r):ncol(V)];
+    V21 <- V[(2+p+r):ncol(V),1:(1+p+r)];
+    V22 <- V[(2+p+r):ncol(V),(2+p+r):ncol(V)];
 
     ## covariance matrix of transcript model estimates
     Sigma <- (Cinv%*%(B%*%Ainv%*%V11%*%Ainv%*%t(B)+
@@ -63,7 +61,7 @@ igwas <- function(Y,G,S,X=NULL,family)
     return(list(b=b,b.cov=b.cov,X2=X2,p=p));
 }
 
-## case-control sampling
+expit <- function(x) { 1/(1+exp(-x)); } # pi()
 ## Y = n x 1 outcome
 ## P = marginal prevalence of Y
 ## G = n x p genes
@@ -88,14 +86,14 @@ igwas.cc <- function(Y,P,G,S,X=NULL,family)
     n1 <- sum(Y==1); n0 <- sum(Y==0); n <- n1+n0;
 
     ## fit outcome model and transcript model
-    if(r==0){ fit.o <- glm(Y~G+S,family=family); } else
-    { fit.o <- glm(Y~G+S+X,family=family); }
+    if(r==0){ fit.o <- glm(Y~G,family=family); } else
+    { fit.o <- glm(Y~G+X,family=family); }
     ystar <- G%*%coef(fit.o)[2:(1+p)];
     w1 <- P*n/n1; w0 <- (1-P)*n/n0;
     ws <- Y; ws[Y==1] <- w1; ws[Y==0] <- w0;
     if(r==0){ fit.t <- lm(ystar~S,weights=ws); } else
     { fit.t <- lm(ystar~S+X,weights=ws); }
-
+    
     ## calculate covariance matrix of \hat{\beta}_S
     Ainv <- bread(fit.o); ## already scaled by n
     covs <- cbind(1,S,X);
@@ -103,15 +101,15 @@ igwas.cc <- function(Y,P,G,S,X=NULL,family)
          w0/n*t(covs[Y==0,])%*%as.matrix(G[Y==0,]);
     B <- cbind(rep(0,nrow(B)),
                B,
-               matrix(0,nrow=nrow(B),ncol=q+r));
+               matrix(0,nrow=nrow(B),ncol=r));
     Cinv <- solve(w1/n*t(covs[Y==1,])%*%covs[Y==1,]+
                   w0/n*t(covs[Y==0,])%*%covs[Y==0,]);
     ee <- cbind(estfun(fit.o),estfun(fit.t));
     V <- t(ee)%*%ee/n;
-    V11 <- V[1:(1+p+q+r),1:(1+p+q+r)];
-    V12 <- V[1:(1+p+q+r),(2+p+q+r):ncol(V)];
-    V21 <- V[(2+p+q+r):ncol(V),1:(1+p+q+r)];
-    V22 <- V[(2+p+q+r):ncol(V),(2+p+q+r):ncol(V)];
+    V11 <- V[1:(1+p+r),1:(1+p+r)];
+    V12 <- V[1:(1+p+r),(2+p+r):ncol(V)];
+    V21 <- V[(2+p+r):ncol(V),1:(1+p+r)];
+    V22 <- V[(2+p+r):ncol(V),(2+p+r):ncol(V)];
 
     ## covariance matrix of transcript model estimates
     Sigma <- (Cinv%*%(B%*%Ainv%*%V11%*%Ainv%*%t(B)+
