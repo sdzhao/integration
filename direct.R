@@ -67,7 +67,8 @@ Y <- G%*%aG+S%*%aS+X%*%aX+rnorm(n,0,2);
 ## integrative
 res.l[,,1] <- apply(S,2,function(s)
                   {
-                      fit.i <- igwas(Y,G,s,X,family="gaussian");
+                      fit.i <- igwas(Y,G,s,X,family="gaussian",
+                                     direct = TRUE);
                       return(unlist(fit.i));
                   });
 
@@ -123,7 +124,8 @@ Y <- Y[keep];
 ## integrative
 res.c[,,1] <- apply(S,2,function(s)
                   {
-                      fit.i <- igwas.cc(Y,P,G,s,X,family="binomial");
+                      fit.i <- igwas.cc(Y,P,G,s,X,family="binomial",
+                                        direct = TRUE);
                       return(unlist(fit.i));
                   });
 
